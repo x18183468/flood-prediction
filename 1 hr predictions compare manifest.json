@@ -1,0 +1,18 @@
+
+{
+    "fileLocations": [
+        {
+            "URIs": [
+                "https://flood-prediction-master-dataset.s3.amazonaws.com/predictions-1-hr/actual_1_hr.csv",
+	"https://flood-prediction-master-dataset.s3.amazonaws.com/predictions-1-hr/random_forest_predictions_1_hr.csv",
+	"https://flood-prediction-master-dataset.s3.amazonaws.com/predictions-1-hr/xgboost_predictions_1_hr.csv"
+            ]
+        }
+    ],
+    "globalUploadSettings": {
+        "format": "CSV",
+        "delimiter": ",",
+        "containsHeader": "true"
+    }
+}
+                            

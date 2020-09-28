@@ -1,0 +1,99 @@
+//View Imported data
+
+select * from all_sensor_data
+
+//Group by stationurl column which will uniquely identify all sensor data
+
+select stationurl from all_sensor_data group by stationurl
+
+//river level data
+
+CREATE TABLE floodpredictiondataset.river_level_15_min
+WITH (
+  format='TEXTFILE',
+  field_delimiter=','
+) AS  
+select SUBSTR(all_sensor_data.datetime,1,16) AS "TimeRecorded",sensorvalue from all_sensor_data where stationurl = 'http://environment.data.gov.uk/flood-monitoring/id/measures/694670-level-stage-i-15_min-m';
+
+//rainfall data
+
+CREATE TABLE floodpredictiondataset.rainfall_15_min
+WITH (
+  format='TEXTFILE',
+  field_delimiter=','
+) AS  
+select SUBSTR(all_sensor_data.datetime,1,16) AS "TimeRecorded",sensorvalue from all_sensor_data where stationurl = 'http://environment.data.gov.uk/flood-monitoring/id/measures/550148-rainfall-tipping_bucket_raingauge-t-15_min-mm';
+
+
+//temperature data
+
+CREATE TABLE floodpredictiondataset.temperature_15_min
+WITH (
+  format='TEXTFILE',
+  field_delimiter=','
+) AS
+select SUBSTR(all_sensor_data.datetime,1,16) AS "TimeRecorded",sensorvalue from all_sensor_data where stationurl = 'http://environment.data.gov.uk/flood-monitoring/id/measures/3901-temperature-dry_bulb-i-15_min-deg_C';
+
+
+//wind speed data
+
+CREATE TABLE floodpredictiondataset.wind_speed_15_min
+WITH (
+  format='TEXTFILE',
+  field_delimiter=','
+) AS
+select SUBSTR(all_sensor_data.datetime,1,16) AS "TimeRecorded",sensorvalue from all_sensor_data where stationurl = 'http://environment.data.gov.uk/flood-monitoring/id/measures/694670-wind-speed-Mean-15_min-m_s';
+
+
+//wind direction data
+
+CREATE TABLE floodpredictiondataset.wind_direction_15_min
+WITH (
+  format='TEXTFILE',
+  field_delimiter=','
+) AS
+select SUBSTR(all_sensor_data.datetime,1,16) AS "TimeRecorded",sensorvalue from all_sensor_data where stationurl = 'http://environment.data.gov.uk/flood-monitoring/id/measures/694670-wind-direction-Mean-15_min-deg';
+
+//combining files one by one
+
+
+CREATE TABLE floodpredictiondataset.river_and_rain
+WITH (
+  format='TEXTFILE',
+  field_delimiter=','
+) AS
+select river_level_15_min.TimeRecorded, river_level_15_min.sensorvalue AS "river", rainfall_15_min.sensorvalue AS "rain" from river_level_15_min JOIN rainfall_15_min ON river_level_15_min.TimeRecorded = rainfall_15_min.TimeRecorded;
+
+CREATE TABLE floodpredictiondataset.river_rain_temperature
+WITH (
+  format='TEXTFILE',
+  field_delimiter=','
+) AS
+select river_and_rain.TimeRecorded, river_and_rain.river, river_and_rain.rain, temperature_15_min.sensorvalue AS "temperature" from river_and_rain JOIN temperature_15_min ON river_and_rain.TimeRecorded = temperature_15_min.TimeRecorded;
+
+CREATE TABLE floodpredictiondataset.except_speed
+WITH (
+  format='TEXTFILE',
+  field_delimiter=','
+) AS
+select river_rain_temperature.TimeRecorded, river_rain_temperature.river, river_rain_temperature.rain, river_rain_temperature.temperature, wind_direction_15_min.sensorvalue AS "wind_direction" from river_rain_temperature JOIN wind_direction_15_min ON river_rain_temperature.TimeRecorded = wind_direction_15_min.TimeRecorded;
+
+// final 15 min data
+
+CREATE TABLE floodpredictiondataset.ml_sensor_data_15_min
+WITH (
+  format='TEXTFILE',
+  field_delimiter=',',
+  external_location='s3://flood-prediction-master-dataset/ml-sensor-data-15-min'
+) AS
+select except_speed.TimeRecorded, except_speed.river, except_speed.rain, except_speed.temperature, except_speed.wind_direction, wind_speed_15_min.sensorvalue AS "wind_speed" from except_speed JOIN wind_speed_15_min ON except_speed.TimeRecorded = wind_speed_15_min.TimeRecorded;
+
+//aggregating data to 1 hour
+
+CREATE TABLE floodpredictiondataset.ml_sensor_data_1_hr
+WITH (
+  format='TEXTFILE',
+  field_delimiter=',',
+  external_location='s3://flood-prediction-master-dataset/ml-sensor-data-1-hr'
+) AS
+SELECT SUBSTR(TimeRecorded,1,13) AS "TimeRecorded", round(MAX(river),3) AS "river", round(SUM(rain),1) AS "rain", round(AVG(temperature),2) AS "temperature", round(AVG(wind_direction),0) AS "wind_direction", round(AVG(wind_speed),3) AS "wind_speed" from tempTable group by SUBSTR(TimeRecorded,1,13);

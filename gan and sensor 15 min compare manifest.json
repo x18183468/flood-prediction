@@ -1,0 +1,16 @@
+
+{
+    "fileLocations": [
+        {
+            "URIs": [
+                "https://flood-prediction-master-dataset.s3.amazonaws.com/final-dataset-15-min/final_data_15_min.csv"
+            ]
+        }
+    ],
+    "globalUploadSettings": {
+        "format": "CSV",
+        "delimiter": ",",
+        "containsHeader": "true"
+    }
+}
+                            
